@@ -1,0 +1,123 @@
+'use strict';
+
+const dig = require('node-dig-dns');
+const defaults = {
+  useCookie: false,
+  useTCP: false
+};
+
+module.exports.resolveDNS = function(hostname, options) {
+  return new Promise((resolve, reject) => {
+
+    if(!options) {
+      options = defaults;
+    } else {
+      options = Object.assign(defaults, options);
+    }
+
+    let nsRecords = [];
+    let ip = null;
+
+    const resolveIP = function(result) {
+      // console.log(' - Resolved IP', result);
+
+      if (result && result.answer) {
+        if (result.answer[0].type==='CNAME') {
+          // console.log('IP found as CNAME, resolving again from ', result.answer[0].value);
+          return resolveDNS(result.answer[0].value).then(resolve).catch(reject);
+        }
+
+        // if it is not a cname, it will be a A record with a valid IP:
+        ip = result.answer[0].value;
+      }
+      
+      // var ns = (result.authority) ? result.authority[0][result.authority[0].length-1] : null;
+      if(ip===null) {
+        // console.log('IP not found, resolving again ns...', nsRecords[0]);
+        // console.log('dig @'+nsRecords[0]+' a ' + hostname);
+        return dig(['@'+nsRecords[0], 'a', hostname]).then(resolveNS);
+      }
+
+      const res = {
+        ip: ip,
+        ns: nsRecords
+      };
+      // console.log(' - DNS resolved!!', res);
+      resolve(res);
+    };
+
+    const resolveNS = function(result_ns2) {
+      if(!result_ns2 || !result_ns2.authority || result_ns2.authority.length<1) {
+        // console.log('DIG not valid:', result_ns2);
+        return reject('Domain not valid to get response: ' + hostname);
+      }
+
+      // console.log(' - Resolved NS...', result_ns2);
+      // this part: result_ns2.authority  -  could be undefined on strange subdomains!!
+      var record = '', ns = '';
+      nsRecords = []; // force empty array
+      for (var i = result_ns2.authority.length - 1; i >= 0; i--) {
+        record = result_ns2.authority[i];
+        if(record[3]!=='NS') {
+          reject('Invalid domain!');
+          return false;
+        }
+        ns = record[record.length-1];
+        nsRecords.unshift(ns);
+      }
+
+      ns = nsRecords[0]; // this should be based on the NS priority...
+      
+      try {
+        const digCommand = ['A', hostname, '@' + ns];
+        if (options.useCookie) {
+          digCommand.push('+nocookie');
+        }
+        if (options.useTCP) {
+          digCommand.push('+tcp');
+        }
+        
+        // console.log('A: dig @'+ns+' a ' + hostname, '+nocookie');
+        dig(digCommand).then(resolveIP).catch((err) => {
+          // console.log('RESOLVE ERROR:', err);
+          reject(err);
+        });
+      } catch(ex) {
+        // console.error('DIG Error:', ex.toString());
+        reject(ex);
+      }
+    };
+
+    const resolveTLD = function(result_ns1) {
+      if (result_ns1.authority) {
+        var ln = result_ns1.authority[0].length-1;
+        var ns2 = result_ns1.authority[0][ln];
+
+        // console.log('TLD: dig @'+ns2+' ns ' + hostname);
+        dig(['@'+ns2, 'NS', hostname, '+time=2']).then(results => {
+          if(results.header && results.header) {
+            let rs = results.header;
+            let stringRes = rs[rs.length-1][0];
+            // first check if we get timeout, so we can try with a different NS record...
+            if (stringRes && stringRes.indexOf('connection timed out')>=0) {
+              ns2 = result_ns1.authority[ result_ns1.authority.length-1 ][ln];
+              return dig(['@'+ns2, 'NS', hostname]).then(resolveNS).catch(reject);
+            }
+          }
+          resolveNS(results);
+        }).catch(err => {
+          console.error(err);
+          reject('TLD invalid');
+        })
+      } else {
+        reject('not-domain');
+      }
+    };
+    
+    // console.log("\nROOT: "+'dig @a.root-servers.net ns ' + hostname);
+    dig(['@a.root-servers.net', 'NS', hostname]).then(resolveTLD).catch((err) => {
+      // console.error('RESOLVE ERROR:', err);
+      reject(err);
+    });
+  });
+}

@@ -1,0 +1,32 @@
+{
+  "name": "dig-resolver",
+  "version": "1.0.0",
+  "description": "Node tool to resolve a domain recursively by doing manual DIG queries layer by layer.",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/mocha/bin/_mocha test/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jalamprea/dig-resolver.git"
+  },
+  "keywords": [
+    "dns",
+    "dig",
+    "domain",
+    "root"
+  ],
+  "author": "Julian Lamprea",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jalamprea/dig-resolver/issues"
+  },
+  "homepage": "https://github.com/jalamprea/dig-resolver#readme",
+  "dependencies": {
+    "node-dig-dns": "^0.2.10"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^6.1.4"
+  }
+}
