@@ -1,5 +1,5 @@
 {
-  "name": "dig-resolver",
+  "name": "dig-ip-resolver",
   "version": "1.0.0",
   "description": "Node tool to resolve a domain recursively by doing manual DIG queries layer by layer.",
   "main": "index.js",
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jalamprea/dig-resolver.git"
+    "url": "git+https://github.com/jalamprea/dig-ip-resolver.git"
   },
   "keywords": [
     "dns",
@@ -19,9 +19,9 @@
   "author": "Julian Lamprea",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jalamprea/dig-resolver/issues"
+    "url": "https://github.com/jalamprea/dig-ip-resolver/issues"
   },
-  "homepage": "https://github.com/jalamprea/dig-resolver#readme",
+  "homepage": "https://github.com/jalamprea/dig-ip-resolver#readme",
   "dependencies": {
     "node-dig-dns": "^0.2.10"
   },
