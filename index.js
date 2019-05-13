@@ -24,7 +24,7 @@ module.exports.resolveDNS = function(hostname, options) {
       if (result && result.answer) {
         if (result.answer[0].type==='CNAME') {
           // console.log('IP found as CNAME, resolving again from ', result.answer[0].value);
-          return resolveDNS(result.answer[0].value).then(resolve).catch(reject);
+          return module.exports.resolveDNS(result.answer[0].value).then(resolve).catch(reject);
         }
 
         // if it is not a cname, it will be a A record with a valid IP:
@@ -66,7 +66,7 @@ module.exports.resolveDNS = function(hostname, options) {
         nsRecords.unshift(ns);
       }
 
-      ns = nsRecords[0]; // this should be based on the NS priority...
+      ns = nsRecords[0]; // TODO: this should be based on the NS priority...
       
       try {
         const digCommand = ['A', hostname, '@' + ns];
