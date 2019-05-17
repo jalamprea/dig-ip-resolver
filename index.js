@@ -59,7 +59,8 @@ module.exports.resolveDNS = function(hostname, options) {
       for (var i = result_ns2.authority.length - 1; i >= 0; i--) {
         record = result_ns2.authority[i];
         if(record[3]!=='NS') {
-          reject('Invalid domain!');
+          console.error('Domain Error', result_ns2);
+          reject('Invalid DIG response: ' + JSON.stringify(result_ns2, null, 2));
           return false;
         }
         ns = record[record.length-1];

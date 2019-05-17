@@ -1,6 +1,6 @@
 {
   "name": "dig-ip-resolver",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Node tool to resolve a domain recursively by doing manual DIG queries layer by layer.",
   "main": "index.js",
   "scripts": {
