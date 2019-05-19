@@ -9,6 +9,8 @@ const defaults = {
 module.exports.resolveDNS = function(hostname, options) {
   return new Promise((resolve, reject) => {
 
+    let lastDigCommand = null;
+
     if(!options) {
       options = defaults;
     } else {
@@ -49,7 +51,8 @@ module.exports.resolveDNS = function(hostname, options) {
     const resolveNS = function(result_ns2) {
       if(!result_ns2 || !result_ns2.authority || result_ns2.authority.length<1) {
         // console.log('DIG not valid:', result_ns2);
-        return reject('Domain not valid to get response: ' + hostname);
+        let cmd = lastDigCommand.join();
+        return reject('Domain not valid to get response: ' + hostname + " \n DIG " + cmd);
       }
 
       // console.log(' - Resolved NS...', result_ns2);
@@ -59,8 +62,9 @@ module.exports.resolveDNS = function(hostname, options) {
       for (var i = result_ns2.authority.length - 1; i >= 0; i--) {
         record = result_ns2.authority[i];
         if(record[3]!=='NS') {
-          console.error('Domain Error', result_ns2);
-          reject('Invalid DIG response: ' + JSON.stringify(result_ns2, null, 2));
+          let cmd = lastDigCommand.join();
+          console.error('Domain Error', result_ns2, ' - DIG', cmd);
+          reject('Invalid NS record: DIG' + cmd + ' :: ' + JSON.stringify(record));
           return false;
         }
         ns = record[record.length-1];
@@ -95,20 +99,30 @@ module.exports.resolveDNS = function(hostname, options) {
         var ns2 = result_ns1.authority[0][ln];
 
         // console.log('TLD: dig @'+ns2+' ns ' + hostname);
-        dig(['@'+ns2, 'NS', hostname, '+time=2']).then(results => {
+        lastDigCommand = ['@'+ns2, 'NS', hostname, '+time=2'];
+        if (options.useTCP) {
+          lastDigCommand.push('+tcp');
+        }
+        if (options.useCookie) {
+          lastDigCommand.push('+nocookie');
+        }
+        dig(lastDigCommand).then(results => {
           if(results.header && results.header) {
             let rs = results.header;
             let stringRes = rs[rs.length-1][0];
             // first check if we get timeout, so we can try with a different NS record...
             if (stringRes && stringRes.indexOf('connection timed out')>=0) {
               ns2 = result_ns1.authority[ result_ns1.authority.length-1 ][ln];
-              return dig(['@'+ns2, 'NS', hostname]).then(resolveNS).catch(reject);
+
+              lastDigCommand = ['@'+ns2, 'NS', hostname];
+              return dig(lastDigCommand).then(resolveNS).catch(reject);
             }
           }
           resolveNS(results);
         }).catch(err => {
-          console.error(err);
-          reject('TLD invalid');
+          console.error(lastDigCommand, ' :: ', err);
+          let cmd = lastDigCommand.join();
+          reject('DIG ' + cmd + ' -> ERROR: TLD invalid');
         })
       } else {
         reject('not-domain');
@@ -116,8 +130,15 @@ module.exports.resolveDNS = function(hostname, options) {
     };
     
     // console.log("\nROOT: "+'dig @a.root-servers.net ns ' + hostname);
-    dig(['@a.root-servers.net', 'NS', hostname]).then(resolveTLD).catch((err) => {
+    lastDigCommand = ['@a.root-servers.net', 'NS', hostname];
+    if (options.useTCP) {
+      lastDigCommand.push('+tcp');
+    }
+    dig(lastDigCommand).then(resolveTLD).catch((err) => {
       // console.error('RESOLVE ERROR:', err);
+      if (err.messsage) {
+        err.messsage = 'DIG '+lastDigCommand.join() + err.messsage;
+      }
       reject(err);
     });
   });
