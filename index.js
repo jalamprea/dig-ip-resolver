@@ -51,7 +51,7 @@ module.exports.resolveDNS = function(hostname, options) {
     const resolveNS = function(result_ns2) {
       if(!result_ns2 || !result_ns2.authority || result_ns2.authority.length<1) {
         // console.log('DIG not valid:', result_ns2);
-        let cmd = lastDigCommand.join();
+        let cmd = lastDigCommand.join(' ');
         return reject('Domain not valid to get response: ' + hostname + " \n DIG " + cmd);
       }
 
@@ -62,7 +62,7 @@ module.exports.resolveDNS = function(hostname, options) {
       for (var i = result_ns2.authority.length - 1; i >= 0; i--) {
         record = result_ns2.authority[i];
         if(record[3]!=='NS') {
-          let cmd = lastDigCommand.join();
+          let cmd = lastDigCommand.join(' ');
           console.error('Domain Error', result_ns2, ' - DIG', cmd);
           reject('Invalid NS record: DIG' + cmd + ' :: ' + JSON.stringify(record));
           return false;
@@ -121,7 +121,7 @@ module.exports.resolveDNS = function(hostname, options) {
           resolveNS(results);
         }).catch(err => {
           console.error(lastDigCommand, ' :: ', err);
-          let cmd = lastDigCommand.join();
+          let cmd = lastDigCommand.join(' ');
           reject('DIG ' + cmd + ' -> ERROR: TLD invalid');
         })
       } else {
@@ -137,7 +137,7 @@ module.exports.resolveDNS = function(hostname, options) {
     dig(lastDigCommand).then(resolveTLD).catch((err) => {
       // console.error('RESOLVE ERROR:', err);
       if (err.messsage) {
-        err.messsage = 'DIG '+lastDigCommand.join() + err.messsage;
+        err.messsage = 'DIG '+lastDigCommand.join(' ') + err.messsage;
       }
       reject(err);
     });
