@@ -1,5 +1,6 @@
 'use strict';
 
+const environment = process.env.NODE_ENV || 'development';
 const dig = require('node-dig-dns');
 const defaults = {
   useCookie: false,
