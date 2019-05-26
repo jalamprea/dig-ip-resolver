@@ -63,7 +63,7 @@ module.exports.resolveDNS = function(hostname, options) {
         record = result_ns2.authority[i];
         if(record[3]!=='NS') {
           let cmd = lastDigCommand.join(' ');
-          console.error('Domain Error', result_ns2, ' - DIG', cmd);
+          // console.error('Domain Error', result_ns2, ' - DIG', cmd);
           reject('Invalid NS record: DIG' + cmd + ' :: ' + JSON.stringify(record));
           return false;
         }
@@ -74,16 +74,17 @@ module.exports.resolveDNS = function(hostname, options) {
       ns = nsRecords[0]; // TODO: this should be based on the NS priority...
       
       try {
-        const digCommand = ['A', hostname, '@' + ns];
-        if (options.useCookie) {
-          digCommand.push('+nocookie');
+        lastDigCommand = ['A', hostname, '@' + ns];
+        if (environment!=='development' && options.useCookie) {
+            lastDigCommand.push('+nocookie');
+          }
         }
         if (options.useTCP) {
-          digCommand.push('+tcp');
+          lastDigCommand.push('+tcp');
         }
         
         // console.log('A: dig @'+ns+' a ' + hostname, '+nocookie');
-        dig(digCommand).then(resolveIP).catch((err) => {
+        dig(lastDigCommand).then(resolveIP).catch((err) => {
           // console.log('RESOLVE ERROR:', err);
           reject(err);
         });
@@ -104,7 +105,7 @@ module.exports.resolveDNS = function(hostname, options) {
           lastDigCommand.push('+tcp');
         }
         if (options.useCookie) {
-          lastDigCommand.push('+nocookie');
+          // lastDigCommand.push('+nocookie');
         }
         dig(lastDigCommand).then(results => {
           if(results.header && results.header) {
