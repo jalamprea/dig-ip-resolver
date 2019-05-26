@@ -78,7 +78,6 @@ module.exports.resolveDNS = function(hostname, options) {
         lastDigCommand = ['A', hostname, '@' + ns];
         if (environment!=='development' && options.useCookie) {
             lastDigCommand.push('+nocookie');
-          }
         }
         if (options.useTCP) {
           lastDigCommand.push('+tcp');
