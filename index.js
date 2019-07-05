@@ -21,12 +21,12 @@ module.exports.resolveDNS = function(hostname, options) {
     let nsRecords = [];
     let ip = null;
 
-    const resolveIP = function(result) {
-      // console.log(' - Resolved IP', result);
+    const resolveIP = async function(result) {
+      console.log(' - Resolved IP', result);
 
       if (result && result.answer) {
         if (result.answer[0].type==='CNAME') {
-          // console.log('IP found as CNAME, resolving again from ', result.answer[0].value);
+          console.log('IP found as CNAME, resolving again from ', result.answer[0].value);
           return module.exports.resolveDNS(result.answer[0].value).then(resolve).catch(reject);
         }
 
@@ -36,9 +36,11 @@ module.exports.resolveDNS = function(hostname, options) {
       
       // var ns = (result.authority) ? result.authority[0][result.authority[0].length-1] : null;
       if(ip===null) {
-        // console.log('IP not found, resolving again ns...', nsRecords[0]);
-        // console.log('dig @'+nsRecords[0]+' a ' + hostname);
-        return dig(['@'+nsRecords[0], 'a', hostname]).then(resolveNS);
+        console.log('IP not found, resolving again ns...', hostname, nsRecords[1]);
+        lastDigCommand = ['@'+nsRecords[1], 'A', hostname, '+time=2', '+tries=1'];
+        ip = (await dig(lastDigCommand).catch((err) => {
+          console.log("Both nameservers fail to resolve IP", hostname, nsRecords[0], nsRecords[1]);
+        })).answer[0].value;
       }
 
       const res = {
@@ -75,21 +77,23 @@ module.exports.resolveDNS = function(hostname, options) {
       ns = nsRecords[0]; // TODO: this should be based on the NS priority...
       
       try {
-        lastDigCommand = ['A', hostname, '@' + ns];
+        lastDigCommand = ['A', hostname, '@' + ns, '+time=2', '+tries=1'];
         if (environment!=='development' && options.useCookie) {
             lastDigCommand.push('+nocookie');
         }
         if (options.useTCP) {
           lastDigCommand.push('+tcp');
         }
-        
-        // console.log('A: dig @'+ns+' a ' + hostname, '+nocookie');
         dig(lastDigCommand).then(resolveIP).catch((err) => {
-          // console.log('RESOLVE ERROR:', err);
-          reject(err);
+          console.log('retrying with second nameserver. RESOLVE ERROR:', lastDigCommand, err);
+          lastDigCommand[2] = '@' + nsRecords[1];//retry with second nameserver
+          dig(lastDigCommand).then(resolveIP).catch((err) => {
+            console.log('RESOLVE ERROR:', lastDigCommand, err);
+            reject(err);
+          });
         });
       } catch(ex) {
-        // console.error('DIG Error:', ex.toString());
+        console.error('DIG Error:', ex.toString(), lastDigCommand);
         reject(ex);
       }
     };
@@ -100,7 +104,7 @@ module.exports.resolveDNS = function(hostname, options) {
         var ns2 = result_ns1.authority[0][ln];
 
         // console.log('TLD: dig @'+ns2+' ns ' + hostname);
-        lastDigCommand = ['@'+ns2, 'NS', hostname, '+time=2'];
+        lastDigCommand = ['@'+ns2, 'NS', hostname, '+time=2', '+tries=1'];
         if (options.useTCP) {
           lastDigCommand.push('+tcp');
         }
@@ -112,10 +116,11 @@ module.exports.resolveDNS = function(hostname, options) {
             let rs = results.header;
             let stringRes = rs[rs.length-1][0];
             // first check if we get timeout, so we can try with a different NS record...
+            console.log(lastDigCommand, stringRes);
             if (stringRes && stringRes.indexOf('connection timed out')>=0) {
               ns2 = result_ns1.authority[ result_ns1.authority.length-1 ][ln];
 
-              lastDigCommand = ['@'+ns2, 'NS', hostname];
+              lastDigCommand = ['@'+ns2, 'NS', hostname, '+time=2', '+tries=1'];
               return dig(lastDigCommand).then(resolveNS).catch(reject);
             }
           }
@@ -131,7 +136,7 @@ module.exports.resolveDNS = function(hostname, options) {
     };
     
     // console.log("\nROOT: "+'dig @a.root-servers.net ns ' + hostname);
-    lastDigCommand = ['@a.root-servers.net', 'NS', hostname];
+    lastDigCommand = ['@a.root-servers.net', 'NS', hostname, '+time=2', '+tries=1'];
     if (options.useTCP) {
       lastDigCommand.push('+tcp');
     }
