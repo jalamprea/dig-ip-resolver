@@ -36,6 +36,10 @@ module.exports.resolveDNS = function(hostname, options) {
       
       // var ns = (result.authority) ? result.authority[0][result.authority[0].length-1] : null;
       if(ip===null) {
+        if(result.authority && result.authority[0] && result.authority[0][result.authority[0].length-1]){
+          console.log('Delegate nameserver found...', hostname, result.authority[0][result.authority[0].length-1]);
+          return dig(['@'+result.authority[0][result.authority[0].length-1], 'A', hostname]).then(resolveIP);
+        }        
         console.log('IP not found, resolving again ns...', hostname, nsRecords[1]);
         lastDigCommand = ['@'+nsRecords[1], 'A', hostname, '+time=2', '+tries=1'];
         ip = (await dig(lastDigCommand).catch((err) => {
@@ -99,6 +103,7 @@ module.exports.resolveDNS = function(hostname, options) {
     };
 
     const resolveTLD = function(result_ns1) {
+      console.log(hostname, result_ns1);
       if (result_ns1.authority) {
         var ln = result_ns1.authority[0].length-1;
         var ns2 = result_ns1.authority[0][ln];
@@ -111,6 +116,7 @@ module.exports.resolveDNS = function(hostname, options) {
         if (options.useCookie) {
           // lastDigCommand.push('+nocookie');
         }
+        console.log(lastDigCommand);
         dig(lastDigCommand).then(results => {
           if(results.header && results.header) {
             let rs = results.header;
