@@ -73,7 +73,7 @@ module.exports.resolveDNS = function(hostname, options) {
         if(record[3]!=='NS') {
           let cmd = lastDigCommand.join(' ');
            console.error('Domain Error', result_ns2, ' - DIG', cmd);
-          reject('Invalid NS record: DIG' + cmd + ' :: ' + JSON.stringify(record));
+          reject('Invalid NS record: dig ' + cmd + ' ==> ' + JSON.stringify(record));
           return false;
         }
         ns = record[record.length-1];
